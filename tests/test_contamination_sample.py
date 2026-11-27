@@ -23,6 +23,31 @@ def test_stratum_weights_do_not_favor_deeper_sampling():
     )
 
 
+def test_each_stratum_keeps_its_measured_impurity_and_moisture_pairing():
+    rows = [
+        cut("S-1", "上", 1000, 40, 10),
+        cut("S-2", "中", 1000, 150, 20),
+        cut("S-3", "下", 1000, 300, 120),
+    ]
+    summary = estimate("P1", rows)
+    paired = {layer.stratum: (layer.impurity, layer.moisture) for layer in summary.strata}
+    assert paired == {
+        "上": (pytest.approx(0.04), pytest.approx(0.01)),
+        "中": (pytest.approx(0.15), pytest.approx(0.02)),
+        "下": (pytest.approx(0.30), pytest.approx(0.12)),
+    }
+    # Cross-layer reporting still equal-weights complete strata.
+    assert summary.impurity == pytest.approx((0.04 + 0.15 + 0.30) / 3)
+    assert summary.moisture == pytest.approx((0.01 + 0.02 + 0.12) / 3)
+    assert summary.full_coverage
+
+
+def test_incomplete_layers_do_not_claim_full_coverage():
+    summary = estimate("P1", [cut(), cut("S-2", "中")])
+    assert not summary.full_coverage and not summary.approved_samples
+    assert {layer.stratum for layer in summary.strata} == {"上", "中"}
+
+
 def test_empty_sample_does_not_claim_purity():
     assert estimate("P1", []).impurity is None
     assert wilson_upper(0.1, 0) is None

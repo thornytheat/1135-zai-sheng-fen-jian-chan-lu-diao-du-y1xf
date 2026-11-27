@@ -32,6 +32,15 @@ class Curve:
 
 
 @dataclass(frozen=True)
+class LayerEstimate:
+    stratum: str
+    rate: float | None
+    lower: float | None
+    upper: float | None
+    notice: str
+
+
+@dataclass(frozen=True)
 class Estimate:
     lot: str
     rate: float | None
@@ -39,3 +48,4 @@ class Estimate:
     upper: float | None
     fit_group: str
     notice: str
+    layers: tuple[LayerEstimate, ...] = ()

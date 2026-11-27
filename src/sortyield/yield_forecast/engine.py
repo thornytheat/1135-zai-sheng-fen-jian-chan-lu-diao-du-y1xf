@@ -1,6 +1,6 @@
 from collections import defaultdict
 from math import ceil, fsum, log1p, sqrt
-from .contracts import Curve, Estimate
+from .contracts import Curve, Estimate, LayerEstimate
 
 
 def model_vector(kg, impurity, moisture, line):
@@ -96,24 +96,65 @@ def per_polymer(history, fold, cutoff):
     return curves
 
 
-def predict(lot, audit, curve):
-    if curve is None or not audit.approved_samples:
-        return Estimate(lot.lot, None, None, None, lot.material, "缺足量抽检或拟合记录")
-    vector = model_vector(lot.kg, audit.impurity, audit.moisture, lot.line)
+def score_point(vector, curve):
+    """Score a single (kg, impurity, moisture, line) vector against a curve."""
     distance = max(
         max(low - x, x - high, 0) / sd
         for x, (low, high), sd in zip(vector, curve.limits, curve.scale, strict=True)
     )
     if distance > 2.5:
-        return Estimate(lot.lot, None, None, None, curve.material, "料批超出训练支撑")
-    score = clipped_prediction(
+        return None, None, None
+    rate = clipped_prediction(
         vector, curve.center, curve.scale, curve.params, curve.rate
     )
-    return Estimate(
-        lot.lot,
-        score,
-        max(0, score - curve.loss_radius),
-        min(1, score + curve.loss_radius),
-        curve.material,
-        "已估算",
-    )
+    return rate, max(0, rate - curve.loss_radius), min(1, rate + curve.loss_radius)
+
+
+def predict_layers(lot, audit, curve):
+    """Score each measured stratum on its own impurity/moisture pairing.
+
+    Returns one LayerEstimate per stratum, keeping the measured pair intact so
+    no synthetic (impurity, moisture) combination is ever scored.  A layer whose
+    measured pair falls outside the training support is left unscored.
+    """
+    if curve is None or not audit.approved_samples:
+        return tuple(
+            LayerEstimate(layer.stratum, None, None, None, "缺足量抽检或拟合记录")
+            for layer in audit.strata
+        )
+    layers = []
+    for layer in audit.strata:
+        vector = model_vector(lot.kg, layer.impurity, layer.moisture, lot.line)
+        rate, lower, upper = score_point(vector, curve)
+        notice = "已估算" if rate is not None else "料批超出训练支撑"
+        layers.append(LayerEstimate(layer.stratum, rate, lower, upper, notice))
+    return tuple(layers)
+
+
+def predict(lot, audit, curve):
+    if curve is None or not audit.approved_samples:
+        return Estimate(lot.lot, None, None, None, lot.material, "缺足量抽检或拟合记录")
+    strata = getattr(audit, "strata", ())
+    if strata:
+        layers = predict_layers(lot, audit, curve)
+        if any(layer.rate is None for layer in layers):
+            return Estimate(
+                lot.lot,
+                None,
+                None,
+                None,
+                curve.material,
+                "料批超出训练支撑",
+                layers,
+            )
+        rate = fsum(layer.rate for layer in layers) / len(layers)
+        lower = min(layer.lower for layer in layers)
+        upper = max(layer.upper for layer in layers)
+        return Estimate(
+            lot.lot, rate, lower, upper, curve.material, "已估算", layers
+        )
+    vector = model_vector(lot.kg, audit.impurity, audit.moisture, lot.line)
+    rate, lower, upper = score_point(vector, curve)
+    if rate is None:
+        return Estimate(lot.lot, None, None, None, curve.material, "料批超出训练支撑")
+    return Estimate(lot.lot, rate, lower, upper, curve.material, "已估算")

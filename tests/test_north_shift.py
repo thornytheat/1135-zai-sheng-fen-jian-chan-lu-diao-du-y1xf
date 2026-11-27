@@ -53,3 +53,34 @@ def test_held_batches_remain_in_closing_mass_reconciliation():
     assert pending
     assert {row["lot"] for row in pending} <= {row["料批"] for row in totals}
     assert sum(row["来料（kg）"] for row in totals) == result["metrics"]["来料（kg）"]
+
+
+def test_reserve_is_bounded_by_every_layers_yield_floor():
+    result = run(100)
+    layers = {}
+    for row in result["stages"][2]["分层产率"]:
+        layers.setdefault(row["料批"], []).append(row)
+    grades = {row["料批"]: row for row in result["stages"][3]["records"]}
+    for lot, rows in layers.items():
+        # All three strata scored on their own measured impurity/moisture pair.
+        assert {row["层位"] for row in rows} == {"上", "中", "下"}
+        worst = min(row["下界"] for row in rows)
+        prediction = next(
+            item for item in result["stages"][2]["records"] if item["料批"] == lot
+        )
+        assert prediction["下界"] == worst
+        if grades[lot]["保守排仓（kg）"]:
+            entry = next(row for row in result["rows"] if row["lot"] == lot)
+            assert grades[lot]["保守排仓（kg）"] == int(entry["input"] * worst)
+
+
+def test_layer_readings_keep_measured_impurity_and_moisture_pairs():
+    result = run(1)
+    readings = result["stages"][1]["分层实测"]
+    complete = {}
+    for row in readings:
+        complete.setdefault(row["料批"], []).append(row)
+    for lot in ("P-251", "P-268"):
+        assert {row["层位"] for row in complete[lot]} == {"上", "中", "下"}
+        for row in complete[lot]:
+            assert 0 <= row["杂质率"] <= 1 and 0 <= row["水分"] <= 1

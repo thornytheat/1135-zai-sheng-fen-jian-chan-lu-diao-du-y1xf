@@ -38,6 +38,28 @@ def test_below_minimum_yield_waits_for_resorting():
     assert result.grade == Grade.MIXED and result.reserve_kg == 0
 
 
+def test_single_layer_below_minimum_blocks_the_clean_bunker():
+    from sortyield.yield_forecast.contracts import Estimate, LayerEstimate
+
+    lot, audit, estimate = inputs()
+    estimate = Estimate(
+        "A",
+        0.8,
+        0.6,
+        0.9,
+        "PET",
+        "已估算",
+        (
+            LayerEstimate("上", 0.85, 0.75, 0.95, "已估算"),
+            LayerEstimate("中", 0.82, 0.72, 0.92, "已估算"),
+            LayerEstimate("下", 0.55, 0.48, 0.62, "已估算"),
+        ),
+    )
+    result = classify(lot, audit, estimate)
+    assert result.grade == Grade.MIXED and result.reserve_kg == 0
+    assert result.reasons == ("分层出料区间下界不足：下",)
+
+
 def test_cohort_cannot_be_silently_dropped():
     lot, audit, estimate = inputs()
     with pytest.raises(ValueError, match="无法对照"):

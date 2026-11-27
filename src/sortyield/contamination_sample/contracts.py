@@ -21,6 +21,22 @@ class Cut:
 
 
 @dataclass(frozen=True)
+class StratumReading:
+    """One stratum's measured impurity and moisture, kept as a real pairing."""
+
+    stratum: str
+    grams: int
+    impurity: float
+    moisture: float
+
+    def __post_init__(self):
+        if not self.stratum or self.grams <= 0:
+            raise ValueError("分层读数缺失")
+        if not all(isfinite(x) and 0 <= x <= 1 for x in (self.impurity, self.moisture)):
+            raise ValueError("分层读数越界")
+
+
+@dataclass(frozen=True)
 class Audit:
     lot: str
     slices: int
@@ -30,10 +46,16 @@ class Audit:
     upper_impurity: float | None
     excluded: int
     coverage: float
+    strata: tuple[StratumReading, ...] = ()
 
     @property
     def approved_samples(self):
         return self.slices >= 3 and self.coverage >= 0.95 and self.impurity is not None
+
+    @property
+    def full_coverage(self):
+        """All planned strata measured, so every layer can be scored on its own."""
+        return bool(self.strata) and self.coverage >= 0.95
 
 
 @dataclass(frozen=True)

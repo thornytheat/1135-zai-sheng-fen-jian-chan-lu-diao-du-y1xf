@@ -1,6 +1,6 @@
 from collections import defaultdict
 from math import fsum, sqrt
-from .contracts import Audit, Cut, SamplingPlan
+from .contracts import Audit, Cut, SamplingPlan, StratumReading
 
 
 def wilson_upper(portion, total, z=1.645):
@@ -40,17 +40,22 @@ def estimate(lot, raw, plan=SamplingPlan()):
         accepted = next(iter(cuts))
         grouped[accepted.stratum].append(accepted)
     if not grouped:
-        return Audit(lot, 0, 0, None, None, None, excluded, 0)
+        return Audit(lot, 0, 0, None, None, None, excluded, 0, ())
     means = []
     waters = []
+    readings = []
     mass = 0
     count = 0
     equivalent = 0
     for stratum, cuts in sorted(grouped.items()):
         grams = sum(cut.grams for cut in cuts)
         undesirable = sum(cut.unwanted for cut in cuts)
+        water = sum(cut.water for cut in cuts)
         means.append(undesirable / grams)
-        waters.append(sum(cut.water for cut in cuts) / grams)
+        waters.append(water / grams)
+        readings.append(
+            StratumReading(stratum, grams, undesirable / grams, water / grams)
+        )
         equivalent += len(cuts) * 10
         mass += grams
         count += len(cuts)
@@ -65,6 +70,7 @@ def estimate(lot, raw, plan=SamplingPlan()):
         wilson_upper(impurity, equivalent),
         excluded,
         len(grouped) / len(plan.strata),
+        tuple(readings),
     )
 
 

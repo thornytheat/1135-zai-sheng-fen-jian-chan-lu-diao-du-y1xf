@@ -9,8 +9,16 @@ def classify(lot, audit, estimate, rules=QualityRules()):
         reasons.append("抽检覆盖不足")
     if estimate.rate is None:
         reasons.append(estimate.notice)
-    elif estimate.lower < rules.min_yield:
-        reasons.append("出料区间下界不足")
+    else:
+        breached = [
+            layer.stratum
+            for layer in getattr(estimate, "layers", ())
+            if layer.lower is not None and layer.lower < rules.min_yield
+        ]
+        if breached:
+            reasons.append("分层出料区间下界不足：" + "、".join(breached))
+        elif estimate.lower < rules.min_yield:
+            reasons.append("出料区间下界不足")
     if audit.upper_impurity is not None and audit.upper_impurity > rules.impurity_upper:
         reasons.append("杂质上界超过合同")
     if audit.moisture is not None and audit.moisture > rules.max_moisture:

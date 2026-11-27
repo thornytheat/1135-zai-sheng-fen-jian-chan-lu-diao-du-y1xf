@@ -39,6 +39,18 @@ def evidence(curves, forecasts):
             }
             for row in forecasts
         ],
+        "分层产率": [
+            {
+                "料批": row.lot,
+                "层位": layer.stratum,
+                "产率": layer.rate,
+                "下界": layer.lower,
+                "上界": layer.upper,
+                "结果": layer.notice,
+            }
+            for row in forecasts
+            for layer in row.layers
+        ],
         "拟合记录数": {
             key: {"训练": model.count, "校准": model.validation}
             for key, model in curves.items()
