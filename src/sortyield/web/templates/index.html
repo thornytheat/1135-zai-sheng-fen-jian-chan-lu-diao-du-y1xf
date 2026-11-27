@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>再生分拣产率调度</title>
+  <link rel="stylesheet" href="/static/theme.css">
+  <link rel="stylesheet" href="/static/components.css">
+  <link rel="stylesheet" href="/static/layout.css">
+  <script defer src="/static/visual-data.js"></script>
+  <script defer src="/static/workbench.js"></script>
+</head>
+<body data-project="sortyield">
+  <a href="#main" class="skip">跳到业务结果</a>
+  <div class="shell">
+    <aside class="rail">
+      <h2>产线调度</h2>
+      <nav aria-label="业务环节">
+        {% for slug, label in modules %}<button type="button" data-stage="{{ slug }}" aria-pressed="false">{{ label }}</button>{% endfor %}
+      </nav>
+    </aside>
+    <main class="content" id="main">
+      <header class="masthead">
+        <h1>再生分拣产率调度</h1>
+        <form id="scenario" class="scenario">
+          <label for="capacity">仓位分配限额（吨）<input id="capacity" placeholder="输入额度" required type="number" min="1" max="100" step="1" inputmode="numeric"></label>
+          <button id="submit" class="primary" type="submit" disabled>重排仓位</button>
+          <button class="quiet" id="export" type="button" disabled>导出</button>
+        </form>
+      </header>
+      <dl class="kpis" id="metrics" aria-label="本批指标"></dl>
+      <div class="board">
+        <section class="panel signal" aria-labelledby="chart-heading">
+          <div class="panel-heading"><h2 id="chart-heading">分拣仓容监测</h2><p>出料测算</p></div>
+          <div class="chart" id="chart" data-axis="出料测算"></div>
+        </section>
+        <section class="panel decisions" aria-labelledby="decision-heading">
+          <div class="panel-heading"><h2 id="decision-heading">产率与入仓单</h2><p id="row-count"></p>
+          <input id="row-filter" type="search" autocomplete="off" aria-label="筛选记录" placeholder="筛选记录"></div>
+          <div id="rows" class="table-scroll" tabindex="0" role="region" aria-label="产率与入仓单"></div>
+        </section>
+        <section id="evidence" class="panel evidence" aria-labelledby="evidence-heading">
+          <div class="panel-heading"><h2 id="evidence-heading" tabindex="-1">地磅与验收证据</h2><p id="evidence-summary"></p></div>
+          <div id="stage-records" class="table-scroll" tabindex="0" role="region" aria-label="环节证据"></div>
+        </section>
+      </div>
+      <footer class="statusbar">
+        <span id="status" role="status">正在载入样例</span>
+        <span>运行指纹 <code id="run-id">—</code> · <a href="/api/overview">运行数据</a></span>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

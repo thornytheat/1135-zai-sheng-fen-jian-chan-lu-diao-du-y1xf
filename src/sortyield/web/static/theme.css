@@ -1,0 +1,11 @@
+:root {
+    color-scheme: light;
+    --bg: #e9edf0; --background: var(--bg);
+    --surface: #f9fcfe; --ink: #21303e; --muted: #506477;
+    --accent: #286498; --border: #adbfce; --wash: #d8eaf7;
+    --rail: #213447; --on-rail: #eff7ff; --on-accent: #fffdf8;
+    --error: #a72338;
+    --display: "DIN Alternate","PingFang SC",sans-serif; --type: "PingFang SC",sans-serif;
+    --radius: 5px; --gutter: 22px; --title: 30px;
+    --base: 13px;
+}

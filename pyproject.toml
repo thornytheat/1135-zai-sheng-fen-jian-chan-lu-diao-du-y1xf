@@ -1,0 +1,14 @@
+[project]
+name = "sortyield"
+version = "1.0.0"
+requires-python = ">=3.12"
+description = "再生分拣产率调度"
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
